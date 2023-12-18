@@ -3,18 +3,17 @@ from openpyxl.styles import Font,PatternFill,Alignment
 from openpyxl.chart import LineChart,Reference
 from datetime import date
 from func import *
-#Perguntando qual açao o usuario quer procurar
+#Pergunta qual açao o usuario quer procurar
 #acao = input("Qual o código da ação? ").upper()
 acao = "BIDI4"
-#abrindo o arquivo com as açoes e pegando a informoçao da açao necessária
+#Abrindo o arquivo com as açoes e pegando a informoçao da açao necessária
 leitor_acoes = LeitorAcoes(caminho_arquivo="./dados/")
 leitor_acoes.processa_arquivo(acao)
-#n sei oq faz woorkbook
-workbook = Workbook()
-planilha_ativa = workbook.active
-planilha_ativa.title = "Dados"
-#Cabeçalho do arquivo de excel
-planilha_ativa.append(["Data","Cotação","Banda Inferior","Banda Superior"])
+#Invoca a classe GerenciadorPlanilha para colocarr os dados nas coolunas designadas
+gerenciador = GerrenciadorPlanilha()
+gerenciador.add_planilha("Dados")
+gerenciador.add_linha(["Data","Cotação","Banda Inferior","Banda Superior"])
+
 indice = 2
 for linha in leitor_acoes.dados:
 #Editando a coluna Data (2017-04-03 21:00:00;8.2606)
@@ -26,19 +25,20 @@ for linha in leitor_acoes.dados:
     )
 #Cotacao
     cotacao = float(linha[1])
-#TAtualiza as celulas do excel automaticamente em cada coluna
-    planilha_ativa[f"A{indice}"] = data
-    planilha_ativa[f"B{indice}"] = cotacao
-#Banda Inferior: MEDIA MOVEL(20P) - 2X DESVIO PADRAO(20P)
-    planilha_ativa[f"C{indice}"] = f"=AVERRAGE(B{indice}:B{indice + 19}) - 2*STDEV(B{indice}:B{indice + 19})"
-#Banda Superior
-    planilha_ativa[f"D{indice}"] = f"=AVERRAGE(B{indice}:B{indice + 19}) - 2*STDEV(B{indice}:B{indice + 19})"
-
+#Formulas das bandas de bollinger
+    formula_bb_inferior = f"=AVERRAGE(B{indice}:B{indice + 19}) - 2*STDEV(B{indice}:B{indice + 19})"
+    formula_bb_superior = f"=AVERRAGE(B{indice}:B{indice + 19}) - 2*STDEV(B{indice}:B{indice + 19})"
+#Traz a função atualiza_celula para atualizar automaticamente cada celula
+    gerenciador.atualiza_celula(celula=f"A{indice}", dado=data)
+    gerenciador.atualiza_celula(celula=f"B{indice}", dado=cotacao)
+    gerenciador.atualiza_celula(celula=f"C{indice}", dado=formula_bb_inferior)
+    gerenciador.atualiza_celula(celula=f"D{indice}", dado=formula_bb_superior)
     indice += 1
-planilha_grafico = workbook.create_sheet("Gráfico")
-workbook.active = planilha_grafico
+
+gerenciador.add_planilha(titulo_planilha="Gráfico")
+
 #Mesclagem de celulas para criação do cabeçalho do gráfico
-planilha_grafico.merge_cells("A1:T2")
+
 cabecalho = planilha_grafico("A1")
 cabecalho.font = Font(b=True, sz=18,color="FFFFFF")
 cabecalho.fill = PatternFill("solid", fgColor="07838f")
@@ -66,5 +66,5 @@ linha_bb_inferior.graphicalProperties.line.solidFill = "a61508"
 linha_bb_superior.graphicalProperties.line.width = 0
 linha_bb_superior.graphicalProperties.line.solidFill = "12a154"
 planilha_grafico.add_chart(grafico,"A3")
-#workbook.save("./saida/Planilha.xlsx")
+
 workbook.save("./saida/Planilha.xlsx")
